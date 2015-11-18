@@ -1,0 +1,427 @@
+#! /bin/sh
+# Copyright (C) 2003-2011 the VideoLAN team
+# Copyright (C) 2013-2014 the cocos2d-x team
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
+
+#
+# Command line handling
+#
+usage()
+{
+	echo "Usage: $0 [--build=BUILD] [--host=HOST] [--prefix=PREFIX]"
+	echo "  --build=BUILD    configure for building on BUILD"
+	echo "  --host=HOST      cross-compile to build to run on HOST"
+	echo "  --prefix=PREFIX  install files in PREFIX"
+	echo "  --disable-FOO    configure to not build package FOO"
+	echo "  --enable-FOO     configure to build package FOO"
+}
+
+BUILD=
+HOST=
+PREFIX=
+PKGS_ENABLE=
+PKGS_DISABLE=
+
+if test ! -f "../../contrib/src/main.mak"
+then
+	echo "$0 must be run from a subdirectory"
+	exit 1
+fi
+
+while test -n "$1"
+do
+	case "$1" in
+		--build=*)
+			BUILD="${1#--build=}"
+			;;
+		--help|-h)
+			usage
+			exit 0
+			;;
+		--host=*)
+			HOST="${1#--host=}"
+			;;
+		--prefix=*)
+			PREFIX="${1#--prefix=}"
+			;;
+		--disable-*)
+			PKGS_DISABLE="${PKGS_DISABLE} ${1#--disable-}"
+			;;
+		--enable-*)
+			PKGS_ENABLE="${PKGS_ENABLE} ${1#--enable-}"
+			;;
+		*)
+			echo "Unrecognized options $1"
+			usage
+			exit 1
+			;;
+	esac
+	shift
+done
+
+if test -z "$BUILD"
+then
+	echo -n "Guessing build system... "
+	BUILD="`${CC:-cc} -dumpmachine`"
+	if test -z "$BUILD"; then
+		echo "FAIL!"
+		exit 1
+	fi
+	echo "$BUILD"
+fi
+
+if test -z "$HOST"
+then
+	echo -n "Guessing host system...  "
+	HOST="$BUILD"
+	echo "$HOST"
+fi
+
+if test "$PREFIX"
+then
+	# strip trailing slash
+	PREFIX="${PREFIX%/}"
+fi
+
+#
+# Prepare files
+#
+echo "Creating configuration file... config.mak"
+exec 3>config.mak || exit $?
+cat >&3 << EOF
+# This file was automatically generated.
+# Any change will be overwritten if ../bootstrap is run again.
+BUILD := $BUILD
+HOST := $HOST
+PKGS_DISABLE := $PKGS_DISABLE
+PKGS_ENABLE := $PKGS_ENABLE
+EOF
+
+add_make()
+{
+	while test -n "$1"
+	do
+		echo "$1" >&3
+		shift
+	done
+}
+
+add_make_enabled()
+{
+	while test -n "$1"
+	do
+		add_make "$1 := 1"
+		shift
+	done
+}
+
+check_tvos_sdk()
+{
+   [ -z "${MY_TARGET_ARCH}" ] && echo "You must set MY_TARGET_ARCH environment variable" && exit 1
+    if [ $MY_TARGET_ARCH = "x86_64" ];then
+        TVOS_PLATFORM="Simulator"
+    else
+        TVOS_PLATFORM="OS"
+    fi
+   
+   SDK_VERSION=$(xcodebuild -showsdks | grep appletvos | sort | tail -n 1 | awk '{print substr($NF,10)}')
+   
+   if test -z "$SDKROOT"
+   then
+      SDKROOT=`xcode-select -print-path`/Platforms/AppleTV${TVOS_PLATFORM}.platform/Developer/SDKs/AppleTV${TVOS_PLATFORM}${SDK_VERSION}.sdk
+      echo "SDKROOT not specified, assuming $SDKROOT"
+   else
+      SDKROOT="$SDKROOT"
+      fi
+
+   if [ ! -d "${SDKROOT}" ]
+   then
+      echo "*** ${SDKROOT} does not exist, please install required SDK, or set SDKROOT manually. ***"
+      exit 1
+   fi
+   add_make "TVOS_SDK=${SDKROOT}"
+   add_make "TVOS_TOOLCHAIN=${SDKROOT}/../../usr/bin/"
+
+   if [ "$TVOS_PLATFORM" = "OS" ]; then
+       export AS="gas-preprocessor.pl ${CC}"
+       export ASCPP="gas-preprocessor.pl ${CC}"
+       export CCAS="gas-preprocessor.pl ${CC}"
+   else
+       export ASCPP="xcrun as"
+   fi
+    
+   if [ "$TVOS_PLATFORM" = "OS" ]; then
+       EX_CFLAGS="-isysroot ${SDKROOT} -arch ${MY_TARGET_ARCH}"
+       if [ "${MY_TARGET_ARCH}" != "arm64" ]; then
+           EX_CFLAGS="${EX_CFLAGS} -mcpu=cortex-a8"
+       fi
+   else
+       EX_CFLAGS="-isysroot ${SDKROOT} -arch ${MY_TARGET_ARCH}"
+   fi
+   add_make "EXTRA_CFLAGS := ${EX_CFLAGS}"
+   add_make "EXTRA_LDFLAGS := -L${SDKROOT}/usr/lib -arch ${MY_TARGET_ARCH} -isysroot ${SDKROOT}"
+}
+
+check_ios_sdk()
+{
+   [ -z "${MY_TARGET_ARCH}" ] && echo "You must set MY_TARGET_ARCH environment variable" && exit 1
+    if [ $MY_TARGET_ARCH = "i386" ] || [ $MY_TARGET_ARCH = "x86_64" ];then
+        IOS_PLATFORM="Simulator"
+    else
+        IOS_PLATFORM="OS"
+    fi
+   
+   SDK_VERSION=$(xcodebuild -showsdks | grep iphoneos | sort | tail -n 1 | awk '{print substr($NF,9)}')
+   
+   if test -z "$SDKROOT"
+   then
+      SDKROOT=`xcode-select -print-path`/Platforms/iPhone${IOS_PLATFORM}.platform/Developer/SDKs/iPhone${IOS_PLATFORM}${SDK_VERSION}.sdk
+      echo "SDKROOT not specified, assuming $SDKROOT"
+   else
+      SDKROOT="$SDKROOT"
+      fi
+
+   if [ ! -d "${SDKROOT}" ]
+   then
+      echo "*** ${SDKROOT} does not exist, please install required SDK, or set SDKROOT manually. ***"
+      exit 1
+   fi
+   add_make "IOS_SDK=${SDKROOT}"
+   add_make "IOS_TOOLCHAIN=${SDKROOT}/../../usr/bin/"
+
+   if [ "$IOS_PLATFORM" = "OS" ]; then
+       export AS="gas-preprocessor.pl ${CC}"
+       export ASCPP="gas-preprocessor.pl ${CC}"
+       export CCAS="gas-preprocessor.pl ${CC}"
+   else
+       export ASCPP="xcrun as"
+   fi
+    
+   if [ "$IOS_PLATFORM" = "OS" ]; then
+       EX_CFLAGS="-isysroot ${SDKROOT} -arch ${MY_TARGET_ARCH} -miphoneos-version-min=6.0"
+       if [ "${MY_TARGET_ARCH}" != "arm64" ]; then
+           EX_CFLAGS="${EX_CFLAGS} -mcpu=cortex-a8"
+       fi
+   else
+       EX_CFLAGS="-isysroot ${SDKROOT} -arch ${MY_TARGET_ARCH} -miphoneos-version-min=6.0"
+   fi
+   add_make "EXTRA_CFLAGS := ${EX_CFLAGS}"
+   add_make "EXTRA_LDFLAGS := -L${SDKROOT}/usr/lib -arch ${MY_TARGET_ARCH} -isysroot ${SDKROOT} -miphoneos-version-min=6.0"
+}
+
+check_macosx_sdk()
+{
+   if [ -z "${OSX_VERSION}" ]
+   then
+      OSX_VERSION=`xcrun --show-sdk-version`
+      echo "OSX_VERSION not specified, assuming $OSX_VERSION"
+   fi
+   if test -z "$SDKROOT"
+   then
+      SDKROOT=`xcode-select -print-path`/Platforms/MacOSX.platform/Developer/SDKs/MacOSX$OSX_VERSION.sdk
+      echo "SDKROOT not specified, assuming $SDKROOT"
+   fi
+
+   if [ ! -d "${SDKROOT}" ]
+   then
+      SDKROOT_NOT_FOUND=`xcode-select -print-path`/Platforms/MacOSX.platform/Developer/SDKs/MacOSX$OSX_VERSION.sdk
+      SDKROOT=`xcode-select -print-path`/SDKs/MacOSX$OSX_VERSION.sdk
+      echo "SDKROOT not found at $SDKROOT_NOT_FOUND, trying $SDKROOT"
+   fi
+   if [ ! -d "${SDKROOT}" ]
+   then
+      SDKROOT_NOT_FOUND="$SDKROOT"
+      SDKROOT=`xcrun --show-sdk-path`
+      echo "SDKROOT not found at $SDKROOT_NOT_FOUND, trying $SDKROOT"
+   fi
+
+   if [ ! -d "${SDKROOT}" ]
+   then
+      echo "*** ${SDKROOT} does not exist, please install required SDK, or set SDKROOT manually. ***"
+      exit 1
+   fi
+
+   add_make "MACOSX_SDK=${SDKROOT}"
+   add_make "OSX_VERSION ?= ${OSX_VERSION}"
+   # TODO: the system libssl.dylib would config with the one we built
+   # add_make "EXTRA_LDFLAGS := -L${SDKROOT}/usr/lib "
+}
+
+check_android_sdk()
+{
+        ANDROID_ABI=$MY_TARGET_ARCH
+        
+	[ -z "${ANDROID_NDK}" ] && echo "You must set ANDROID_NDK environment variable" && exit 1
+	add_make "ANDROID_NDK := ${ANDROID_NDK}"
+	[ -z "${ANDROID_GCC_VERSION}" ] && echo "You must set ANDROID_GCC_VERSION environment variable" && exit 1
+	add_make "ANDROID_GCC_VERSION := ${ANDROID_GCC_VERSION}"
+	[ -z "${ANDROID_ABI}" ] && echo "You must set ANDROID_ABI environment variable" && exit 1
+	add_make "ANDROID_ABI := ${ANDROID_ABI}"
+	[ -z "${ANDROID_API}" ] && echo "You should set ANDROID_API environment variable (using default android-9)" && ANDROID_API := android-9
+	add_make "ANDROID_API := ${ANDROID_API}"
+        
+        ## FIXME: the android toolchain path is hardcoded, only MACOSX will work.
+        if [ ${ANDROID_ABI} = "x86" ]; then
+            toolchain_path_prefix=x86
+        elif [ ${ANDROID_ABI} = "arm64-v8a" ];then
+            toolchain_path_prefix=aarch64-linux-android
+        else
+            toolchain_path_prefix=arm-linux-androideabi
+        fi
+
+        # check whether sysroot is exists
+        if [ $ANDROID_ABI = "arm64-v8a" ]; then
+            if [ ! -d ${ANDROID_NDK}/platforms/${ANDROID_API}/arch-arm64 ];then
+                echo "${ANDROID_NDK} ${ANDROID_API} doesn't support build arm64 architecture!"
+                exit $? 
+            fi
+        fi
+        
+        # check whether gcc version is exists
+        if [ ! -d ${ANDROID_NDK}/toolchains/${toolchain_path_prefix}-${ANDROID_GCC_VERSION} ] ;then
+            echo "${ANDROID_NDK} Invalid GCC ${ANDROID_GCC_VERSION} version!"
+            exit 1
+        fi
+
+        THUMB_FLAG=""
+        if [ $ANDROID_USE_MTHUMB = "yes" ];then
+            THUMB_FLAG="-mthumb"
+            echo "we are using mthumb for ${ANDROID_ABI}!!"
+        fi
+
+
+	if [ ${ANDROID_ABI} = "armeabi-v7a" ]; then
+            add_make_enabled "HAVE_NEON"
+            add_make_enabled "HAVE_ARMV7A"
+            add_make "EXTRA_CFLAGS := -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16 ${THUMB_FLAG} -fomit-frame-pointer -fno-strict-aliasing -DANDROID  -Wa,--noexecstack -Wformat "
+            add_make "EXTRA_LDFLAGS := -march=armv7-a -Wl,--fix-cortex-a8"
+        fi
+        
+	if [ ${ANDROID_ABI} = "armeabi" -a -z "${NO_ARMV6}" ];then
+            add_make_enabled "HAVE_ARMV6"
+            add_make "EXTRA_CFLAGS := -ffunction-sections -funwind-tables -fstack-protector -no-canonical-prefixes  -march=armv5te -mtune=xscale -msoft-float ${THUMB_FLAG} -fomit-frame-pointer -fno-strict-aliasing -DANDROID  -Wa,--noexecstack -Wformat "
+        fi
+
+	if [ ${ANDROID_ABI} = "arm64-v8a" ]; then
+            add_make_enabled "HAVE_NEON"
+            add_make_enabled "HAVE_ARMV8A"
+            add_make "EXTRA_CFLAGS :=  -fpic -ffunction-sections  -funwind-tables  -fstack-protector  -no-canonical-prefixes"
+            add_make "EXTRA_LDFLAGS := -no-canonical-prefixes"
+        fi
+
+        if [ ${ANDROID_ABI} = "x86" ];then
+            add_make_enabled "HAVE_x86"
+            add_make "EXTRA_CFLAGS := -ffunction-sections -funwind-tables -fstack-protector -no-canonical-prefixes  -fomit-frame-pointer -fstrict-aliasing -DANDROID  -Wa,--noexecstack -Wformat "
+        fi
+
+        if [ ${ANDROID_STL_VERSION} = "gnu" ];then
+            add_make_enabled "HAVE_STL_GUN"
+        else
+            add_make_enabled "HAVE_STL_CLANG"
+        fi
+        
+}
+
+check_tizen_sdk()
+{
+    [ -z "${TIZEN_SDK}" ] && echo "You must set TIZEN_SDK environment variable" && exit 1
+    add_make "TIZEN_SDK := ${TIZEN_SDK}"
+}
+
+test -z "$PREFIX" || add_make "PREFIX := $PREFIX"
+
+#
+# Checks
+#
+OS="${HOST#*-}" # strip architecture
+echo "The host is $OS"
+case "${OS}" in
+	apple-darwin*)
+		if test -n "$BUILDFORIOS"
+		then
+			check_ios_sdk
+			add_make_enabled "HAVE_IOS" "HAVE_DARWIN_OS" "HAVE_BSD"  "HAVE_ARMV7A" "HAVE_NEON"
+		elif test -n "$BUILDFORTVOS"
+		then
+			check_tvos_sdk
+			add_make_enabled "HAVE_TVOS" "HAVE_DARWIN_OS" "HAVE_BSD" "HAVE_NEON"
+		else
+			check_macosx_sdk
+			add_make_enabled "HAVE_MACOSX" "HAVE_DARWIN_OS" "HAVE_BSD"
+		fi
+		;;
+	*bsd*)
+		add_make_enabled "HAVE_BSD"
+		;;
+	*android*)
+                echo "check android sdk"
+		check_android_sdk
+		add_make_enabled "HAVE_LINUX" "HAVE_ANDROID"
+		case "${HOST}" in
+			*arm*)
+			    add_make "PLATFORM_SHORT_ARCH := arm"
+			;;
+			*arm64* | *aarch64*)
+			    add_make "PLATFORM_SHORT_ARCH := arm64"
+			;;
+			*i686*)
+			    add_make "PLATFORM_SHORT_ARCH := x86"
+			;;
+			*x86_64*)
+			    add_make "PLATFORM_SHORT_ARCH := x86_64"
+			;;
+			*mipsel*)
+			    add_make "PLATFORM_SHORT_ARCH := mips"
+			;;
+		esac
+		;;
+        *gnueabi*)
+            echo "check Tizen SDK"
+            check_tizen_sdk
+            add_make_enabled "HAVE_TIZEN" "HAVE_LINUX"
+            ;;
+	*linux*)
+		add_make_enabled "HAVE_LINUX"
+		;;
+	*mingw*)
+		add_make_enabled "HAVE_WIN32"
+		;;
+	*solaris*)
+		add_make_enabled "HAVE_SOLARIS"
+		;;
+esac
+
+#
+# Results output
+#
+test -e Makefile && unlink Makefile
+ln -sf ../../contrib/src/main.mak Makefile || exit $?
+cat << EOF
+Bootstrap completed.
+
+Run "make" to start compilation.
+
+Other targets:
+ * make install      same as "make"
+ * make list         list packages
+ * make fetch        fetch required source tarballs
+ * make fetch-all    fetch all source tarballs
+ * make distclean    clean everything and undo bootstrap
+ * make mostlyclean  clean everything except source tarballs
+ * make clean        clean everything
+EOF
+
+mkdir -p ../../contrib/tarballs || exit $?
