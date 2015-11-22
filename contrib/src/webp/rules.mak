@@ -10,11 +10,13 @@ $(TARBALLS)/libwebp-$(WEBP_VERSION).tar.gz:
 
 webp: libwebp-$(WEBP_VERSION).tar.gz .sum-webp
 	$(UNPACK)
+ifdef HAVE_ANDROID
+	$(APPLY) $(SRC)/webp/android.patch
+endif
 	$(UPDATE_AUTOCONFIG)
 	$(MOVE)
 
 .webp: webp
 	cd $< && $(HOSTVARS) ./configure $(HOSTCONF)
-	cd $< && $(MAKE)
 	cd $< && $(MAKE) install
 	touch $@
