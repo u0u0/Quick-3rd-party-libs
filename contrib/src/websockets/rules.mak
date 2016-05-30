@@ -34,6 +34,6 @@ ifdef HAVE_TVOS
 endif
 
 .websockets: websockets .zlib .openssl toolchain.cmake
-	cd $< && $(HOSTVARS) CFLAGS="$(CFLAGS) $(EX_ECFLAGS)" $(CMAKE) -DLWS_WITH_SSL=1 -DLWS_WITHOUT_TEST_PING=1 -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=1 $(make_option)
+	cd $< && $(HOSTVARS) CFLAGS="$(CFLAGS) $(EX_ECFLAGS)" $(CMAKE) -DLWS_WITH_SSL=1 -DLWS_WITHOUT_TEST_PING=1 -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=1 -DLWS_IPV6=1 $(make_option)
 	cd $< && $(MAKE) VERBOSE=1 install
 	touch $@
