@@ -1,5 +1,5 @@
 # OPENSSL
-OPENSSL_VERSION := 1.0.1l
+OPENSSL_VERSION := 1.0.2g
 OPENSSL_URL := https://www.openssl.org/source/openssl-$(OPENSSL_VERSION).tar.gz
 
 
@@ -84,14 +84,14 @@ ifdef HAVE_IOS
 endif
 ifdef HAVE_TVOS
 	cd $< && perl -i -pe "s|^CC= xcrun clang|CC= xcrun cc -arch ${MY_TARGET_ARCH} |g" Makefile
-	cd $< && perl -i -pe "s|^CFLAG= (.*)|CFLAG= -DHAVE_FORK=0 -isysroot ${TVOS_SDK} ${OPTIM} |g" Makefile
+	cd $< && perl -i -pe "s|^CFLAG= (.*)|CFLAG= -DHAVE_FORK=0 -isysroot ${TVOS_SDK} ${OPTIM} -fembed-bitcode |g" Makefile
 endif
 ifdef HAVE_LINUX
 	cd $< && perl -i -pe "s|^CFLAG= (.*)|CFLAG= ${EXTRA_CFLAGS} ${OPTIM} |g" Makefile
 endif
 ifdef HAVE_MACOSX
-	cd $< && perl -i -pe "s|^CC= xcrun clang|CC= xcrun cc -arch ${MY_TARGET_ARCH} -mmacosx-version-min=10.7 |g" Makefile
-	cd $< && perl -i -pe "s|^CFLAG= (.*)|CFLAG= -isysroot ${MACOSX_SDK} ${OPTIM} ${OPENSSL_ARCH} |g" Makefile
+	cd $< && perl -i -pe "s|^CC= xcrun clang|CC= xcrun cc -arch ${MY_TARGET_ARCH} -mmacosx-version-min=10.7 -DMACOSX_DEPLOYMENT_TARGET=10.7 |g" Makefile
+	cd $< && perl -i -pe "s|^CFLAG= (.*)|CFLAG= -isysroot ${MACOSX_SDK} ${OPTIM} ${OPENSSL_ARCH} -mmacosx-version-min=10.7 -DMACOSX_DEPLOYMENT_TARGET=10.7 |g" Makefile
 endif
 	cd $< && $(MAKE) install
 	touch $@
