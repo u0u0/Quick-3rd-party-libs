@@ -23,6 +23,8 @@ VPATH := $(TARBALLS)
 # Common download locations
 GNU := http://ftp.gnu.org/gnu
 SF := http://heanet.dl.sourceforge.net/sourceforge
+GITHUB := https://github.com
+
 
 #
 # Machine-dependent variables
@@ -94,8 +96,13 @@ CXX := $(HOST)-g++ --sysroot=$(ANDROID_NDK)/platforms/$(ANDROID_API)/arch-$(PLAT
 endif
 
 ifdef HAVE_TIZEN
-CC := ${HOST}-gcc --sysroot=$(TIZEN_SDK)/platforms/mobile-2.3/rootstraps/mobile-2.3-device.core
-CXX := ${HOST}-g++ --sysroot=$(TIZEN_SDK)/platforms/mobile-2.3/rootstraps/mobile-2.3-device.core
+ifeq ($(ARCH),arm)
+CC := ${HOST}-gcc --sysroot=$(TIZEN_SDK)/platforms/tizen-$(TIZEN_SDK_VERSION)/mobile/rootstraps/mobile-$(TIZEN_SDK_VERSION)-device.core
+CXX := ${HOST}-g++ --sysroot=$(TIZEN_SDK)/platforms/tizen-$(TIZEN_SDK_VERSION)/mobile/rootstraps/mobile-$(TIZEN_SDK_VERSION)-device.core
+else
+CC := ${HOST}-gcc --sysroot=$(TIZEN_SDK)/platforms/tizen-$(TIZEN_SDK_VERSION)/mobile/rootstraps/mobile-$(TIZEN_SDK_VERSION)-emulator.core
+CXX := ${HOST}-g++ --sysroot=$(TIZEN_SDK)/platforms/tizen-$(TIZEN_SDK_VERSION)/mobile/rootstraps/mobile-$(TIZEN_SDK_VERSION)-emulator.core
+endif
 endif
 
 ifdef HAVE_MACOSX
@@ -148,7 +155,7 @@ CCAS=$(CC) -c
 ifneq "$(or $(HAVE_IOS),$(HAVE_TVOS))" ""
 CC=xcrun clang
 CXX=xcrun clang++
-EXTRA_CFLAGS += -fembed-bitcode
+EXTRA_CFLAGS += $(ENABLE_BITCODE)
 ifdef HAVE_NEON
 AS=perl $(abspath ../../extras/tools/bin/gas-preprocessor.pl) $(CC)
 CCAS=gas-preprocessor.pl $(CC) -c

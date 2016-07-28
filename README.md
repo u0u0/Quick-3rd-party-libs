@@ -6,7 +6,7 @@ This repository includes the source code of the 3rd party libraries (binary) tha
 This repository is needed for cocos2d-x developers and/or people who want to:
 
 * generate a updated version of a certain library (eg: upgrade libpng 1.6.2 to 1.6.14)
-* port cocos2d-x to other platforms (eg: port it to Android ARM64, or Xbox One, etc)
+* port cocos2d-x to other platforms (eg: port it to Android ARM64, or Tizen, etc)
 * generate DEBUG versions of all the 3rd party library
 
 
@@ -14,9 +14,9 @@ This repository is needed for cocos2d-x developers and/or people who want to:
 
 - We use MacOSX to build all the static libraries for iOS, Android, Mac and Tizen.
 
-- We use Windows to build all the static libraries for Win32, WP8 and WinRT.
-
 - We use Ubuntu to build all the static libraries for Linux.
+
+- Windows is not supported yet
 
 Other configuration were not tested. Compiling the Android binaries from a Linux
 or Windows machine were not tested, so we don't know if it works or not.
@@ -38,6 +38,8 @@ brew install autoconf
 brew install automake
 brew install libtool
 ```
+**Note:**
+If you have an old version autoconf installed, you may need uninstall it first, then reinstall the new version. Directly upgrade to new version by `brew upgrade` command may cause build always failed.
 
 - If you want to build static libraries for iOS and Mac, you should install the latest version of XCode.  You should also install the `Command Line Tools` bundled with XCode.
 
@@ -57,16 +59,45 @@ sudo apt-get install libtool
 sudo apt-get install git
 ```
 
-### For Windows users
-In order to run these scripts, you should install [msys2](http://msys2.github.io/) and update the system packages.
-
-After that, you should also install the following dependencies:
+- If you want to build 32-bit libs on a 64-bit linux system, you should install *gcc-multilib*
 
 ```
-pacman -S mingw-w64-i686-toolchain
-pacman -S git make mingw-w64-i686-cmake tar autoconf automake libtool automake
+sudo apt-get update
+sudo apt-get install gcc-multilib
+```
+Then use command as follow to build 32-bit libs
 
 ```
+./build.sh -p=platform --libs=libs --arch=i386 --mode=mode
+```
+
+### For Windows 8.1 Universal App users
+The build script for Windows 8.1 Universal Apps in in build\build_winrt.bat. In order to run the script you will need to install Git for Windows from https://msysgit.github.io/. During the install, make sure you select the "Use Git and optional Unix tools from the Windows Command Prompt" in the "Adjusting your Path Environment" step. build_winrt.bat uses some of the binaries installed by Git for Windows. 
+
+You will also need to install Perl http://www.activestate.com/activeperl/downloads in order to build OpenSSL.
+
+After build_winrt.bat is complete, the built libs wil be in contrib\install-winrt.
+
+
+### For Windows (Win32) and  Windows 10 Universal App users
+
+To build static libraries for Win32 and Windows 10 Universal is straightfoward, you could just setup a new static libary project with VisualStudio
+and import all the needed source files and header files into the project.
+
+Note: Some libraries use configure system to generate the required header files for Windows platform. If you find some 
+header files are missing, please check the README file of the 3rd libs. In general, it will provide a VS project to 
+build the static libs for Windows. Some libs also provide a CMakeLists.txt file, you could use CMake GUI tool to generate
+a static library project. Don't forgt to Google the error messages when you can't compile the libs successfully.
+
+### For Tizen Users
+To build static libraries for Tizen, you should install Tizen SDK at first. Currently we only support Tizen SDK version 2.4, you could download Tizen 2.4 SDK from
+[here](https://developer.tizen.org/development/tools/download).
+
+Note: If you want to build static libraries with other Tizen SDK version, you should change `cfg_default_tizen_sdk_version` in `tizen.ini` file.
+
+After downloading the SDK, you should also install the native packages with the **Tizen Update Manager**.
+
+When finished the above setup, you should set a **TIZEN_SDK** environment variable to your shell configure file. (Normally .bash_profile for bash and .zshrc for zsh).
 
 ## How to use
 We have one build script for each platform, it is under `build` directory.
@@ -129,14 +160,24 @@ cd build
 
 1. Download Android NDK r10c and set the ANDROID_NDK to point to the Android ndk r10c path. Don't forget to `source ~/.bash_profile`.
 
-2. Modify the android.ini config file. Change `cfg_default_build_api=21` and `cfg_default_gcc_version=4.9`.
+2. Modify the android.ini config file and set the following: `cfg_default_build_api=21` and `cfg_default_gcc_version=4.9`.
 
-3. Pass `--arch=64` to build the libraries with arm64 support.
+3. Pass `--arch=arm64` to build the libraries with arm64 support.
 
 Note:
 If you build `webp` with arm64, you will get `cpu-features.h` header file not found error. This is a known issue of Android NDK r10c. You could simply create a empty header file
 named `cpu-features.h` under `{ANDROID_NDK}/platforms/android-21/arch-arm64/usr/include`.
 
+### Enable bitcode for iOS
+On default, when building static libs for TVOS, it will enable bitcode, but iOS doesn't.
+
+You should change `cgf_build_bitcode` in `ios.ini` to `-fembed-bitcode`.
+
+Here is the example code:
+
+```
+cfg_build_bitcode="-fembed-bitcode"
+```
 
 ## How to build a DEBUG and RELEASE version
 You can add flag "--mode=[debug | release]" for building DEBUG and RELEASE version.

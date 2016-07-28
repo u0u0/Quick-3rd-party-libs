@@ -40,7 +40,7 @@ function usage()
     echo "Arguments:"
     echo "    PLATFORM:    Platform names, valid values are: mac,ios,tvos,android,win32,tizen,linux"
     echo "    LIBRARY:     Library names, valid values are platform dependent(png,jpeg,chipmunk,etc)"
-    echo "    ARCH:        Build arches, valid values are platform dependent(arm,arm64,armv7,i386,etc)"
+    echo "    ARCH:        Build arches, valid values are platform dependent(arm,arm64,armv7,i386,mips,etc)"
     echo "    MODE:        Build mode, valid values are: release and debug"
     echo ""
     echo "Options:"
@@ -351,6 +351,9 @@ do
             export ANDROID_API=android-$build_api
         fi
 
+        if [ $cfg_platform_name = "tizen" ];then
+            export TIZEN_SDK_VERSION=$cfg_default_tizen_sdk_version
+        fi
 
         mkdir -p "${top_dir}/contrib/${cfg_platform_name}-${arch}"
         cd "${top_dir}/contrib/${cfg_platform_name}-${arch}"
@@ -362,6 +365,8 @@ do
             cfg_build_machine=${!my_target_host}
         fi
 
+        export BUILD_LIB=$lib
+
         ../bootstrap --enable-$lib \
                      --build=$cfg_build_machine \
                      --host=${!my_target_host} \
@@ -370,6 +375,9 @@ do
 
         echo "MY_TARGET_ARCH := ${MY_TARGET_ARCH}" >> config.mak
         echo "OPTIM := ${OPTIM}" >> config.mak
+        ENABLE_BITCODE=$cfg_build_bitcode
+        export ENABLE_BITCODE
+        echo "ENABLE_BITCODE := ${cfg_build_bitcode}" >> config.mak
 
         make
 
