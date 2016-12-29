@@ -13,21 +13,15 @@ $(TARBALLS)/libwebsockets-$(WEBSOCKETS_VERSION).tar.gz:
 websockets: libwebsockets-$(WEBSOCKETS_VERSION).tar.gz .sum-websockets
 	$(UNPACK)
 	$(APPLY) $(SRC)/websockets/remove-werror.patch
-	$(MOVE)
-
-ifdef HAVE_TIZEN
-EX_ECFLAGS = -fPIC
+ifdef HAVE_ANDROID
+	$(APPLY) $(SRC)/websockets/android.patch
 endif
-
+	$(MOVE)
 
 DEPS_websockets = zlib $(DEPS_zlib)
 DEPS_websockets = openssl $(DEPS_openssl)
 
-ifdef HAVE_TVOS
-	make_option=-DLWS_WITHOUT_DAEMONIZE=1
-endif
-
 .websockets: websockets .zlib .openssl toolchain.cmake
-	cd $< && $(HOSTVARS) CFLAGS="$(CFLAGS) $(EX_ECFLAGS)" $(CMAKE) -DLWS_WITH_SSL=ON -DLWS_WITHOUT_SERVER=ON -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITHOUT_TEST_PING=ON -DLWS_IPV6=ON $(make_option)
+	cd $< && $(HOSTVARS) CFLAGS="$(CFLAGS) $(EX_ECFLAGS)" $(CMAKE) -DLWS_WITH_SSL=ON -DLWS_WITHOUT_SERVER=ON -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITHOUT_TEST_PING=ON -DLWS_IPV6=ON -DLWS_WITHOUT_DAEMONIZE=ON $(make_option)
 	cd $< && $(MAKE) VERBOSE=1 install
 	touch $@

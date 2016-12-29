@@ -1,0 +1,16 @@
+diff --git a/lib/lws-plat-unix.c b/lib/lws-plat-unix.c
+index 61468b0..8fef246 100644
+--- a/lib/lws-plat-unix.c
++++ b/lib/lws-plat-unix.c
+@@ -310,8 +310,8 @@
+ 	sigset_t mask;
+ 
+ 	signal(SIGUSR2, lws_sigusr2);
+-	sigemptyset(&mask);
+-	sigaddset(&mask, SIGUSR2);
++	//sigemptyset(&mask);
++	//sigaddset(&mask, SIGUSR2);
+ 
+ 	sigprocmask(SIG_BLOCK, &mask, NULL);
+ 
+
