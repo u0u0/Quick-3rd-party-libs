@@ -1,6 +1,6 @@
 # websockets
 
-WEBSOCKETS_VERSION = 1.4-chrome43-firefox-36
+WEBSOCKETS_VERSION = 1.7.9
 WEBSOCKETS_URL := https://github.com/warmcat/libwebsockets/archive/v$(WEBSOCKETS_VERSION).tar.gz
 
 $(TARBALLS)/libwebsockets-$(WEBSOCKETS_VERSION).tar.gz:
@@ -12,9 +12,8 @@ $(TARBALLS)/libwebsockets-$(WEBSOCKETS_VERSION).tar.gz:
 
 websockets: libwebsockets-$(WEBSOCKETS_VERSION).tar.gz .sum-websockets
 	$(UNPACK)
-	$(APPLY) $(SRC)/websockets/remove-werror.patch
 ifdef HAVE_ANDROID
-	$(APPLY) $(SRC)/websockets/android.patch
+	$(APPLY) $(SRC)/websockets/remove-werror.patch
 endif
 	$(MOVE)
 
