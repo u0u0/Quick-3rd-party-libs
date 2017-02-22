@@ -33,8 +33,5 @@ endif
 		--enable-ipv6 \
 		--disable-ldap \
 		$(configure_option)
-ifdef HAVE_ANDROID
-	$(APPLY) $(SRC)/curl/android.patch
-endif
 	cd $< && $(MAKE) install
 	touch $@

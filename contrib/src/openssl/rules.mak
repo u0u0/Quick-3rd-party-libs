@@ -74,9 +74,6 @@ openssl: openssl-$(OPENSSL_VERSION).tar.gz .sum-openssl
 ifdef HAVE_TIZEN
 	$(APPLY) $(SRC)/openssl/tizen.patch
 endif
-ifdef HAVE_ANDROID
-	$(APPLY) $(SRC)/openssl/android.patch
-endif
 	$(MOVE)
 
 .openssl: openssl
