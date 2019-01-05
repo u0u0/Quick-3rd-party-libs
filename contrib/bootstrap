@@ -16,6 +16,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
 
+# exit this script if any commmand fails
+set -e
+
 #
 # Command line handling
 #
@@ -211,15 +214,15 @@ check_ios_sdk()
    fi
     
    if [ "$IOS_PLATFORM" = "OS" ]; then
-       EX_CFLAGS="-isysroot ${SDKROOT} -arch ${MY_TARGET_ARCH} -miphoneos-version-min=6.0"
+       EX_CFLAGS="-isysroot ${SDKROOT} -arch ${MY_TARGET_ARCH} -miphoneos-version-min=7.0"
        if [ "${MY_TARGET_ARCH}" != "arm64" ]; then
            EX_CFLAGS="${EX_CFLAGS} -mcpu=cortex-a8"
        fi
    else
-       EX_CFLAGS="-isysroot ${SDKROOT} -arch ${MY_TARGET_ARCH} -miphoneos-version-min=6.0"
+       EX_CFLAGS="-isysroot ${SDKROOT} -arch ${MY_TARGET_ARCH} -miphoneos-version-min=7.0"
    fi
    add_make "EXTRA_CFLAGS := ${EX_CFLAGS}"
-   add_make "EXTRA_LDFLAGS := -L${SDKROOT}/usr/lib -arch ${MY_TARGET_ARCH} -isysroot ${SDKROOT} -miphoneos-version-min=6.0"
+   add_make "EXTRA_LDFLAGS := -L${SDKROOT}/usr/lib -arch ${MY_TARGET_ARCH} -isysroot ${SDKROOT} -miphoneos-version-min=7.0"
 }
 
 check_macosx_sdk()
