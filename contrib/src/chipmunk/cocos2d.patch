@@ -1,17 +1,4 @@
-diff --git a/include/chipmunk/chipmunk.h b/include/chipmunk/chipmunk.h
-index 616bfe0..0eb6eee 100644
---- a/include/chipmunk/chipmunk.h
-+++ b/include/chipmunk/chipmunk.h
-@@ -117,6 +117,7 @@ typedef struct cpSpace cpSpace;
- #include "cpConstraint.h"
- 
- #include "cpSpace.h"
-+#include "cpHastySpace.h"
- 
- // Chipmunk 7.0.1
- #define CP_VERSION_MAJOR 7
 diff --git a/include/chipmunk/chipmunk_types.h b/include/chipmunk/chipmunk_types.h
-index 0816727..7aee0c7 100644
 --- a/include/chipmunk/chipmunk_types.h
 +++ b/include/chipmunk/chipmunk_types.h
 @@ -26,35 +26,9 @@
@@ -31,8 +18,8 @@ index 0816727..7aee0c7 100644
 -
 -#if CP_USE_CGTYPES
 -	#if TARGET_OS_IPHONE
--		#import <CoreGraphics/CGGeometry.h>
--		#import <CoreGraphics/CGAffineTransform.h>
+-		#include <CoreGraphics/CGGeometry.h>
+-		#include <CoreGraphics/CGAffineTransform.h>
 -	#elif TARGET_OS_MAC
 -		#include <ApplicationServices/ApplicationServices.h>
 -	#endif
@@ -52,16 +39,15 @@ index 0816727..7aee0c7 100644
  
  /// @defgroup basicTypes Basic Types
 diff --git a/src/cpHastySpace.c b/src/cpHastySpace.c
-index 4e1bf2c..6f69ecc 100644
 --- a/src/cpHastySpace.c
 +++ b/src/cpHastySpace.c
-@@ -6,7 +6,9 @@
+@@ -8,7 +8,9 @@
  
- #include <pthread.h>
  //#include <sys/param.h >
+ #ifndef _WIN32
 +#ifdef __APPLE__
  #include <sys/sysctl.h>
 +#endif
- 
- #include "chipmunk/chipmunk_private.h"
- #include "chipmunk/cpHastySpace.h"
+ #include <pthread.h>
+ #else
+ #ifndef WIN32_LEAN_AND_MEAN
