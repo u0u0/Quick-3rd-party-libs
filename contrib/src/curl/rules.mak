@@ -1,6 +1,6 @@
 # curl
 
-CURL_VERSION := 7.50.0
+CURL_VERSION := 7.52.1
 CURL_URL :=  http://curl.haxx.se/download/curl-$(CURL_VERSION).tar.gz
 
 $(TARBALLS)/curl-$(CURL_VERSION).tar.gz:
@@ -26,6 +26,7 @@ configure_option+=--disable-ntlm-wb
 endif
 
 .curl: curl .zlib .openssl
+	$(APPLY) $(SRC)/curl/connectx.patch
 	$(RECONF)
 	cd $< && $(HOSTVARS_PIC) ./configure $(HOSTCONF) \
 		--with-ssl=$(PREFIX) \
