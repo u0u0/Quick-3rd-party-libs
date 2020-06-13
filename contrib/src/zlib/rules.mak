@@ -1,6 +1,6 @@
 # ZLIB
-ZLIB_VERSION := 1.2.8
-ZLIB_URL := $(SF)/libpng/zlib-$(ZLIB_VERSION).tar.gz
+ZLIB_VERSION := 1.2.11
+ZLIB_URL := https://github.com/madler/zlib/archive/v$(ZLIB_VERSION).tar.gz
 
 
 ifeq ($(shell uname),Darwin) # zlib tries to use libtool on Darwin
